@@ -35,3 +35,31 @@ body {
     color: black;
     -webkit-font-smoothing: antialiased;
 }
+
+.custom-button {
+    background-color: #4caf50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    z-index: 1;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    position: absolute;
+  }
+  
+  .custom-button:hover {
+    background-color: #45a049;
+  }
+  
+  .custom-button:active {
+    transform: scale(0.98);
+  }
+  
+  .custom-button:focus {
+    outline: none;
+  }
+  

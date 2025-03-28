@@ -3,7 +3,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // This is required for Vite to work correctly with CodeSandbox
-const server = {};
+const server = {
+    port: 5174, // ✅ Set the port to 5174
+    strictPort: true,
+};
 
 // https://vitejs.dev/config/
 export default defineConfig({

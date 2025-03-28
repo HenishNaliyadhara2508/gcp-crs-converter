@@ -16,7 +16,7 @@ export class PotreeView extends defaultPotree.Viewer {
         scope.setFOV(60);
         scope.setPointBudget(1000000);
         scope.loadSettingsFromURL();
-        scope.setBackground('null');
+        scope.setBackground('white');
 
         this.pointCloud1 = undefined;
         this.potreeScene = scope.scene;
@@ -54,13 +54,13 @@ export class PotreeView extends defaultPotree.Viewer {
     }
 
     async importPotreeFile(url) {
-        this.pointCloud1.visible = false;
+        this.pointCloud1.visible = true;
         this.pointCloud2.visible = false;
 
         this.gyroPointCloud = await this.addPotree(url);
         this.gyroPointCloud = this.gyroPointCloud.pointCloud;
         this.potreeScene.addPointCloud(this.gyroPointCloud);
-        this.moveCameraAtPattern(this.gyroPointCloud);
+        // this.moveCameraAtPattern(this.gyroPointCloud);
     }
 
     moveCameraAtPattern(pattern) {
@@ -84,6 +84,110 @@ export class PotreeView extends defaultPotree.Viewer {
 
         this.potreeScene.view.setView(cameraPos, pattern.position.clone());
     }
+
+    startMeasurement(type) {
+        let options = {};
+
+        switch (type) {
+            case 'point':
+                options = { showCoordinates: true, maxMarkers: 1 };
+                break;
+            case 'distance':
+                options = { showDistances: true, closed: false };
+                break;
+            case 'height':
+                options = {
+                    showDistances: true,
+                    showHeight: true,
+                    closed: false,
+                    maxMarkers: 2,
+                };
+                break;
+            case 'area':
+                options = { showDistances: true, showArea: true, closed: true };
+                break;
+            case 'volume':
+                this.volumeTool.startInsertion({ name: 'Volume' });
+                return;
+            case 'height-Profile':
+                this.profileTool.startInsertion();
+                return;
+            default:
+                console.warn('Invalid measurement type:', type);
+                return;
+        }
+
+        this.measuringTool.startInsertion(options);
+    }
+
+    clearMeasurements() {
+        this.potreeScene.removeAllMeasurements();
+    }
+
+    setView(view) {
+        if (!view) return;
+
+        switch (view) {
+            case 'F':
+                this.setFrontView();
+                break;
+            case 'B':
+                this.setBackView(); // Fixed name (was setRearView)
+                break;
+            case 'L':
+                this.setLeftView();
+                break;
+            case 'R':
+                this.setRightView();
+                break;
+            case 'U':
+                this.setTopView();
+                break;
+            case 'D':
+                this.setBottomView();
+                break;
+            default:
+                console.warn('Invalid view:', view);
+        }
+    }
+
+    setFrontView() {
+        this.potreeScene.view.position.set(0, 12.5, 80);
+        this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
+        this.fitToScreen();
+    }
+
+    setBackView() {
+        // Renamed from setRearView
+        this.potreeScene.view.position.set(0, 12.5, 0);
+        this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
+        this.fitToScreen();
+    }
+
+    setLeftView() {
+        this.potreeScene.view.position.set(300, 12.5, 0);
+        this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
+        this.fitToScreen();
+    }
+
+    setRightView() {
+        this.potreeScene.view.position.set(-300, 12.5, 0);
+        this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
+        this.fitToScreen();
+    }
+
+    setTopView() {
+        this.potreeScene.view.position.set(0, 12.5, 300);
+        this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
+        this.fitToScreen();
+    }
+
+    setBottomView() {
+        this.potreeScene.view.position.set(0, 12.5, -300);
+        this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
+        this.fitToScreen();
+    }
+
     resetCameraPosition() {
         this.potreeScene.view.position = new THREE.Vector3(0, 12.5, 80);
         this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));

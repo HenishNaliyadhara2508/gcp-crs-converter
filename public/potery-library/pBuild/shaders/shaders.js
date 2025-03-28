@@ -1,6 +1,6 @@
 let Shaders = {};
 
-Shaders["pointcloud.vs"] = `
+Shaders['pointcloud.vs'] = `
 precision highp float;
 precision highp int;
 
@@ -981,9 +981,9 @@ void main() {
 
 	#endif
 }
-`
+`;
 
-Shaders["pointcloud.fs"] = `
+Shaders['pointcloud.fs'] = `
 #if defined paraboloid_point_shape
 	#extension GL_EXT_frag_depth : enable
 #endif
@@ -1085,9 +1085,9 @@ void main() {
 }
 
 
-`
+`;
 
-Shaders["pointcloud_sm.vs"] = `
+Shaders['pointcloud_sm.vs'] = `
 precision mediump float;
 precision mediump int;
 
@@ -1229,9 +1229,9 @@ void main() {
 	gl_PointSize = pointSize;
 
 }
-`
+`;
 
-Shaders["pointcloud_sm.fs"] = `
+Shaders['pointcloud_sm.fs'] = `
 precision mediump float;
 precision mediump int;
 
@@ -1248,9 +1248,9 @@ void main() {
 }
 
 
-`
+`;
 
-Shaders["normalize.vs"] = `
+Shaders['normalize.vs'] = `
 precision mediump float;
 precision mediump int;
 
@@ -1265,9 +1265,9 @@ varying vec2 vUv;
 void main() {
 	vUv = uv;
 	gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-}`
+}`;
 
-Shaders["normalize.fs"] = `
+Shaders['normalize.fs'] = `
 #extension GL_EXT_frag_depth : enable
 
 precision mediump float;
@@ -1295,9 +1295,9 @@ void main() {
 	gl_FragDepthEXT = depth;
 
 
-}`
+}`;
 
-Shaders["normalize_and_edl.fs"] = `
+Shaders['normalize_and_edl.fs'] = `
 #extension GL_EXT_frag_depth : enable
 
 // 
@@ -1360,9 +1360,9 @@ void main() {
 	gl_FragColor = vec4(color.xyz, 1.0); 
 
 	gl_FragDepthEXT = depth;
-}`
+}`;
 
-Shaders["edl.vs"] = `
+Shaders['edl.vs'] = `
 precision mediump float;
 precision mediump int;
 
@@ -1380,9 +1380,9 @@ void main() {
 	vec4 mvPosition = modelViewMatrix * vec4(position,1.0);
 
 	gl_Position = projectionMatrix * mvPosition;
-}`
+}`;
 
-Shaders["edl.fs"] = `
+Shaders['edl.fs'] = `
 #extension GL_EXT_frag_depth : enable
 
 // 
@@ -1458,18 +1458,18 @@ void main(){
 	}
 
 }
-`
+`;
 
-Shaders["blur.vs"] = `
+Shaders['blur.vs'] = `
 varying vec2 vUv;
 
 void main() {
 	vUv = uv;
 
 	gl_Position =   projectionMatrix * modelViewMatrix * vec4(position,1.0);
-}`
+}`;
 
-Shaders["blur.fs"] = `
+Shaders['blur.fs'] = `
 uniform mat4 projectionMatrix;
 
 uniform float screenWidth;
@@ -1500,6 +1500,6 @@ void main() {
 	color = color / 9.0;
 	
 	gl_FragColor = vec4(color, 1.0);
-}`
+}`;
 
-export {Shaders};
+export { Shaders };
