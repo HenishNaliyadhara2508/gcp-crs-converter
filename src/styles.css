@@ -9,7 +9,7 @@ body,
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #272727;
+    background-color: #ffffff;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -61,5 +61,11 @@ body {
   
   .custom-button:focus {
     outline: none;
+  }
+  
+  .potree_render_area {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
   }
   

@@ -1,16 +1,22 @@
-import { useEffect, useRef } from 'react';
+// PotreeCanvas.js
+import { useEffect, useRef, useState } from 'react';
 import { PotreeView } from './potreeView';
 
 export default function PotreeCanvas() {
     const potreeRenderRef = useRef(null);
     const potreeViewRef = useRef(null);
+    const [clickedCoordinates, setClickedCoordinates] = useState(null); // Store clicked coordinates
 
     useEffect(() => {
         const createPotree = async () => {
             potreeViewRef.current = new PotreeView({
                 ele: potreeRenderRef.current,
             });
+
             await potreeViewRef.current.init();
+            potreeViewRef.current.addPointCloudClickListener(
+                handlePointCloudClick,
+            ); // Pass the callback here
         };
 
         createPotree();
@@ -22,98 +28,41 @@ export default function PotreeCanvas() {
         }
     }, [potreeViewRef]);
 
-    return (
-        <>
-            <div style={{ position: 'relative' }}>
-                <div
-                    className="potree_render_area"
-                    style={{ width: '100vw', height: '99vh' }}
-                    ref={potreeRenderRef}></div>
+    // Function to handle point cloud click and display coordinates
+    const handlePointCloudClick = (coordinates) => {
+        setClickedCoordinates(coordinates);
+    };
 
+    return (
+        <div style={{ position: 'relative' }}>
+            <div
+                className="potree_render_area"
+                style={{ width: '100vw', height: '90vh' }}
+                ref={potreeRenderRef}></div>
+
+            {clickedCoordinates && (
                 <div
                     style={{
                         position: 'absolute',
-                        top: '10px',
-                        textAlign: 'center',
-                        gap: '10px',
+                        top: 20,
+                        left: 20,
+                        zIndex: 10,
+                        backgroundColor: 'white',
+                        padding: '10px',
+                        borderRadius: '5px',
                     }}>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.startMeasurement('point')
-                        }>
-                        Measure Point
-                    </button>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.startMeasurement('distance')
-                        }>
-                        Measure Distance
-                    </button>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.startMeasurement('area')
-                        }>
-                        Measure Area
-                    </button>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.startMeasurement('height')
-                        }>
-                        Measure Height
-                    </button>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.startMeasurement('volume')
-                        }>
-                        Volume
-                    </button>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.startMeasurement(
-                                'height-Profile',
-                            )
-                        }>
-                        Height Profile
-                    </button>
-                    <button
-                        onClick={() =>
-                            potreeViewRef.current?.clearMeasurements()
-                        }>
-                        Clear Measurements
-                    </button>
+                    <h4>Clicked Point Coordinates:</h4>
+                    <p>
+                        XYZ: ({clickedCoordinates.x.toFixed(2)},{' '}
+                        {clickedCoordinates.y.toFixed(2)},{' '}
+                        {clickedCoordinates.z.toFixed(2)})
+                    </p>
+                    <p>
+                        Lat: {clickedCoordinates.latDMS}, Lon:{' '}
+                        {clickedCoordinates.lonDMS}
+                    </p>
                 </div>
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '40px',
-                        textAlign: 'center',
-                        gap: '10px',
-                    }}>
-                    <button onClick={() => potreeViewRef.current?.setTopView()}>
-                        Top View
-                    </button>
-                    <button
-                        onClick={() => potreeViewRef.current?.setBottomView()}>
-                        Bottom View
-                    </button>
-                    <button
-                        onClick={() => potreeViewRef.current?.setLeftView()}>
-                        Left View
-                    </button>
-                    <button
-                        onClick={() => potreeViewRef.current?.setRightView()}>
-                        Right View
-                    </button>
-                    <button
-                        onClick={() => potreeViewRef.current?.setFrontView()}>
-                        Front View
-                    </button>
-                    <button
-                        onClick={() => potreeViewRef.current?.setBackView()}>
-                        Rear View
-                    </button>
-                </div>
-            </div>
-        </>
+            )}
+        </div>
     );
 }
