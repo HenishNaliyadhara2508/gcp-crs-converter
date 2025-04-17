@@ -31,7 +31,6 @@ export class PotreeView extends defaultPotree.Viewer {
 
         this.threeScene = this.potreeScene.scene;
 
-        // Load Retz point cloud instead of default pointCloud1
         try {
             this.retzPointCloud = await this.loadRetzPointCloud();
             this.fitToScreen();
@@ -41,10 +40,39 @@ export class PotreeView extends defaultPotree.Viewer {
         }
 
         if (this.potreeScene.view) {
-            this.potreeScene.view.position.set(0, 12.5, 80); // Optional: update if needed
+            this.potreeScene.view.position.set(0, 12.5, 80);
             this.potreeScene.view.lookAt(new THREE.Vector3(0, 12.5, 50));
         } else {
             console.error('Potree Scene View is not initialized.');
+        }
+    }
+
+    async loadEPSGDefinition(epsgCode) {
+        if (proj4.defs[epsgCode]) {
+            delete proj4.defs[epsgCode];
+        }
+
+        try {
+            const response = await fetch(`https://epsg.io/${epsgCode}.proj4`);
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to fetch EPSG definition for ${epsgCode}`,
+                );
+            }
+
+            const projDefinition = await response.text();
+            proj4.defs(epsgCode, projDefinition);
+        } catch (error) {
+            console.error(
+                `Error loading EPSG definition for ${epsgCode}:`,
+                error,
+            );
+
+            if (epsgCode === 'EPSG:4326') {
+                proj4.defs(epsgCode, '+proj=longlat +datum=WGS84 +no_defs');
+            } else {
+                console.error('No fallback available for this EPSG code');
+            }
         }
     }
 
@@ -59,43 +87,6 @@ export class PotreeView extends defaultPotree.Viewer {
 
     addPoint(point) {
         this.sceneManager.measure.addMarker(point);
-    }
-
-    async importPotreeFile(url) {
-        // this.pointCloud1.visible = true;
-        // this.pointCloud2.visible = false;
-
-        this.gyroPointCloud = await this.addPotree(url);
-        this.gyroPointCloud = this.gyroPointCloud.pointCloud;
-        this.potreeScene.addPointCloud(this.gyroPointCloud);
-        this.moveCameraAtPattern(this.gyroPointCloud);
-    }
-
-    moveCameraAtPattern(pattern) {
-        if (!pattern) return;
-
-        var bbox = pattern.boundingBox;
-
-        let size = new THREE.Vector3();
-
-        bbox.getSize(size);
-
-        let mostBig = Math.max(...Object.values(size));
-
-        let cameraPos = pattern.position.clone();
-
-        cameraPos.z += mostBig;
-
-        this.potreeScene.view.yaw = pattern.rotation.z + Math.PI / 2;
-
-        this.potreeScene.view.pitch = -Math.PI / 2;
-
-        this.potreeScene.view.setView(cameraPos, pattern.position.clone());
-    }
-
-    convertLatLonToXY(lon, lat, sourceCRS, targetCRS) {
-        const [x, y] = proj4(sourceCRS, targetCRS, [lon, lat]);
-        return { x, y };
     }
 
     async loadRetzPointCloud() {
@@ -157,49 +148,57 @@ export class PotreeView extends defaultPotree.Viewer {
         });
     }
 
-    async transformRetzToLatLon() {
-        const transformedBatches = [];
-        const pointCloudData = this.retzPointCloud.points; // Points from the Retz point cloud
-
-        const batchSize = 10;
-        const totalPoints = pointCloudData.length;
-
-        const sourceEpsgCode = this.retzPointCloud.epsgCode || 'EPSG:4326'; // Default to EPSG:4326 if not found
-
-        // Iterate through the point cloud data and transform the X, Y to lat, lon
-        for (let i = 0; i < totalPoints; i += batchSize) {
-            const batch = pointCloudData
-                .slice(i, i + batchSize)
-                .map((point) => {
-                    const { lat, lon } = this.convertXYToLatLon(
-                        point.x,
-                        point.y,
-                        sourceEpsgCode,
-                    );
-                    return { lat, lon };
-                });
-
-            transformedBatches.push(batch);
-        }
-
-        return transformedBatches;
-    }
-
-    // Utility: Convert decimal degrees to DMS format
-    toDMS(deg) {
+    toDM(deg) {
         const absolute = Math.abs(deg);
         const degrees = Math.floor(absolute);
-        const minutesNotTruncated = (absolute - degrees) * 60;
-        const minutes = Math.floor(minutesNotTruncated);
-        const seconds = (minutesNotTruncated - minutes) * 60;
+        const minutes = (absolute - degrees) * 60;
 
-        return `${degrees}°${minutes}'${seconds.toFixed(3)}"`;
+        return `${degrees}°${minutes.toFixed(5)}'`;
     }
 
     convertXYToLatLon(x, y, sourceEpsgCode) {
         const latLon = proj4(sourceEpsgCode, 'EPSG:4326', [x, y]);
         const [lon, lat] = latLon;
         return { lat, lon };
+    }
+
+    async handlePointClickWithCRS(clickEvent, sourceCRS, targetCRS) {
+        await this.loadEPSGDefinition(sourceCRS);
+        await this.loadEPSGDefinition(targetCRS);
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const rect = this.ele.getBoundingClientRect();
+
+        mouse.x = ((clickEvent.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((clickEvent.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const camera = this.potreeScene.getActiveCamera();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(
+            this.scene.pointclouds,
+            true,
+        );
+
+        if (intersects.length > 0) {
+            const { x, y, z } = intersects[0].point;
+
+            // Perform the CRS transformation
+            const [lon, lat] = proj4(sourceCRS, targetCRS, [x, y]);
+
+            return {
+                x,
+                y,
+                z,
+                lat,
+                lon,
+                latDMS: this.toDM(lat),
+                lonDMS: this.toDM(lon),
+            };
+        }
+
+        return null;
     }
 
     addPointCloudClickListener(onClickCallback) {
@@ -223,108 +222,28 @@ export class PotreeView extends defaultPotree.Viewer {
                 const intersectedPoint = intersects[0].point;
                 const { x, y, z } = intersectedPoint;
 
-                const { lat, lon } = this.convertXYToLatLon(x, y, 'EPSG:32633');
+                const { lat, lon } = this.convertXYToLatLon(
+                    x,
+                    y,
+                    this.retzPointCloud.epsgCode,
+                );
 
-                const latDMS = this.toDMS(lat);
-                const lonDMS = this.toDMS(lon);
+                const latDMS = this.toDM(lat);
+                const lonDMS = this.toDM(lon);
 
-                onClickCallback({ x, y, z, latDMS, lonDMS });
+                onClickCallback({ x, y, z, lat, lon, latDMS, lonDMS });
+            } else {
+                // 🟡 No intersection: return zeros
+                onClickCallback({
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    lat: 0,
+                    lon: 0,
+                    latDMS: this.toDM(0),
+                    lonDMS: this.toDM(0),
+                });
             }
         });
-    }
-
-    transformCRS(
-        selectedEPSG,
-        sourceEPSG = 'EPSG:4326',
-        batchSize = 10,
-        gapDistance = 50,
-    ) {
-        let transformedData = [];
-        let batchData = [];
-
-        if (
-            this.retzPointCloud &&
-            this.retzPointCloud.pcoGeometry &&
-            this.retzPointCloud.pcoGeometry.root
-        ) {
-            const positions =
-                this.retzPointCloud.pcoGeometry.root.geometry.attributes
-                    .position.array;
-
-            const scale = 1.0;
-            const translation = { x: 100, y: 200, z: 300 };
-            const rotation = {
-                x: (Math.PI / 180) * 10,
-                y: (Math.PI / 180) * 15,
-                z: (Math.PI / 180) * 20,
-            };
-
-            let crsFrom = sourceEPSG;
-            let crsTo = selectedEPSG;
-
-            if (crsFrom !== crsTo) {
-                for (let i = 0; i < positions.length; i += 3) {
-                    let lon = positions[i];
-                    let lat = positions[i + 1];
-                    let z = positions[i + 2];
-
-                    const { x, y } = this.convertLatLonToXY(
-                        lon,
-                        lat,
-                        crsFrom,
-                        crsTo,
-                    );
-
-                    transformedData.push({ lat, lon, x, y });
-
-                    positions[i] = x;
-                    positions[i + 1] = y;
-                    positions[i + 2] = z;
-                }
-            }
-
-            for (let i = 0; i < positions.length; i += 3) {
-                let x = positions[i];
-                let y = positions[i + 1];
-                let z = positions[i + 2];
-
-                x += translation.x;
-                y += translation.y;
-                z += translation.z;
-
-                const x1 = x;
-                const y1 = y * Math.cos(rotation.x) - z * Math.sin(rotation.x);
-                const z1 = y * Math.sin(rotation.x) + z * Math.cos(rotation.x);
-
-                const x2 =
-                    x1 * Math.cos(rotation.y) + z1 * Math.sin(rotation.y);
-                const y2 = y1;
-                const z2 =
-                    -x1 * Math.sin(rotation.y) + z1 * Math.cos(rotation.y);
-
-                const x3 =
-                    x2 * Math.cos(rotation.z) - y2 * Math.sin(rotation.z);
-                const y3 =
-                    x2 * Math.sin(rotation.z) + y2 * Math.cos(rotation.z);
-                const z3 = z2;
-
-                positions[i] = x3 * scale;
-                positions[i + 1] = y3 * scale;
-                positions[i + 2] = z3 * scale;
-            }
-
-            this.retzPointCloud.pcoGeometry.root.geometry.attributes.position.needsUpdate = true;
-        } else {
-            console.error(
-                'Point cloud geometry is not fully loaded or missing.',
-            );
-        }
-
-        for (let i = 0; i < transformedData.length; i += batchSize) {
-            const batch = transformedData.slice(i, i + batchSize);
-            batchData.push(batch);
-        }
-
-        return batchData;
     }
 }

@@ -67,5 +67,12 @@ body {
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
+    background-color: transparent !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
   
+  .potree_render_area canvas:focus {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
