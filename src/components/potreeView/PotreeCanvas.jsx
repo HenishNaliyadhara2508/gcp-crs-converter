@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Card, Typography } from 'antd';
 import { PotreeView } from './potreeView';
 import { EPSGSelector } from '../epsgSelector';
 import FileUploadComponent from '../fileUpload';
+
+const { Text } = Typography;
 
 export default function PotreeCanvas() {
     const potreeRenderRef = useRef(null);
@@ -14,12 +17,11 @@ export default function PotreeCanvas() {
 
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
-        if (file) {
-            if (file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
-                processFile(file);
-            } else {
-                // setError('Please upload a .txt or .csv file');
-            }
+        if (
+            file &&
+            (file.name.endsWith('.txt') || file.name.endsWith('.csv'))
+        ) {
+            processFile(file);
         }
     };
 
@@ -75,59 +77,113 @@ export default function PotreeCanvas() {
     useEffect(() => {
         if (fileData.length && potreeViewRef.current) {
             fileData.forEach((coord) => {
-                // console.log('Adding Point:', coord);
+                // Add visual points if needed
             });
         }
     }, [fileData]);
 
     return (
-        <div className="relative flex items-center justify-center h-screen bg-white">
-            <div className="absolute top-5 right-5 z-10 bg-white rounded-lg shadow-md max-h-[80vh] overflow-y-auto p-4">
-                <EPSGSelector
-                    sourceEPSG={sourceEPSG}
-                    setSourceEPSG={setSourceEPSG}
-                    targetEPSG={targetEPSG}
-                    setTargetEPSG={setTargetEPSG}
-                />
-            </div>
-            <div className="absolute top-5 left-5 z-10 bg-white rounded-lg shadow-md max-h-[80vh] overflow-y-auto p-4">
-                <FileUploadComponent onFileUpload={handleFileUpload} />
-            </div>
+        <div
+            className="w-full h-screen relative"
+            style={{ overflow: 'hidden' }}>
+            {/* Potree Render Area - Fixed Left */}
             <div
-                className="potree_render_area"
+                ref={potreeRenderRef}
                 style={{
-                    width: '90vw',
-                    height: '90vh',
-                    border: 'none',
-                    outline: 'none',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '75vw',
+                    height: '100vh',
+                    zIndex: 1,
+                    backgroundColor: '#f0faff',
                 }}
-                ref={potreeRenderRef}></div>
+            />
 
-            {clickedCoordinates && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 20,
-                        right: 20,
-                        zIndex: 10,
-                        backgroundColor: 'white',
-                        padding: '10px',
-                        borderRadius: '5px',
-                        userSelect: 'text',
-                        minWidth: '240px',
-                    }}>
-                    <h4>Clicked Point Coordinates:</h4>
-                    <p>
-                        XYZ: ({clickedCoordinates.x.toFixed(2)},{' '}
-                        {clickedCoordinates.y.toFixed(2)},{' '}
-                        {clickedCoordinates.z.toFixed(2)})
-                    </p>
-                    <p>Lat: {clickedCoordinates.latDMS}</p>
-                    <p>Lon: {clickedCoordinates.lonDMS}</p>
-                    <p>Lat (DD): {clickedCoordinates.lat}</p>
-                    <p>Lon (DD): {clickedCoordinates.lon}</p>
+            {/* Control Panel - Fixed Right */}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '25vw',
+                    height: '100vh',
+                    padding: '16px',
+                    backgroundColor: '#ffffff',
+                    borderLeft: '2px solid #1890ff',
+                    overflowY: 'auto',
+                    zIndex: 10,
+                }}>
+                <div className="space-y-4">
+                    <EPSGSelector
+                        sourceEPSG={sourceEPSG}
+                        setSourceEPSG={setSourceEPSG}
+                        targetEPSG={targetEPSG}
+                        setTargetEPSG={setTargetEPSG}
+                    />
+
+                    <Card
+                        size="small"
+                        title={
+                            <span style={{ color: '#52c41a' }}>
+                                Upload GCP File
+                            </span>
+                        }
+                        bordered
+                        style={{
+                            borderLeft: '4px solid #52c41a',
+                            backgroundColor: '#f6ffed',
+                        }}>
+                        <FileUploadComponent onFileUpload={handleFileUpload} />
+                    </Card>
+
+                    {clickedCoordinates && (
+                        <Card
+                            size="small"
+                            title={
+                                <span style={{ color: '#1890ff' }}>
+                                    Clicked Coordinates
+                                </span>
+                            }
+                            bordered
+                            style={{
+                                borderLeft: '4px solid #1890ff',
+                                backgroundColor: '#e6f7ff',
+                            }}>
+                            <p>
+                                XYZ:{' '}
+                                <Text
+                                    code
+                                    style={{ backgroundColor: '#f0f5ff' }}>
+                                    ({clickedCoordinates.x.toFixed(2)},
+                                    {clickedCoordinates.y.toFixed(2)},
+                                    {clickedCoordinates.z.toFixed(2)})
+                                </Text>
+                            </p>
+                            <p>
+                                Lat (DMS):{' '}
+                                <Text code>{clickedCoordinates.latDMS}</Text>
+                            </p>
+                            <p>
+                                Lon (DMS):{' '}
+                                <Text code>{clickedCoordinates.lonDMS}</Text>
+                            </p>
+                            <p>
+                                Lat (DD):{' '}
+                                <Text style={{ color: '#52c41a' }}>
+                                    {clickedCoordinates.lat}
+                                </Text>
+                            </p>
+                            <p>
+                                Lon (DD):{' '}
+                                <Text style={{ color: '#52c41a' }}>
+                                    {clickedCoordinates.lon}
+                                </Text>
+                            </p>
+                        </Card>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

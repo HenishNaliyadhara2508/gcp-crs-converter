@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Select, Card, Typography, Divider } from 'antd';
 import { getAllCRSByType } from '../helpers/epsgHelper';
+
+const { Option } = Select;
+const { Title, Text } = Typography;
 
 export const EPSGSelector = ({
     sourceEPSG,
@@ -17,46 +21,65 @@ export const EPSGSelector = ({
     }, []);
 
     return (
-        <div className="p-4 border rounded-md space-y-4 w-0 bg-white text-black">
-            <div>
-                <label className="block font-medium mb-1">Horizontal CRS</label>
-                <select
-                    className="border px-2 py-1 rounded w-60 bg-white text-black"
+        <Card
+            title={
+                <span style={{ color: '#1890ff' }}>
+                    Coordinate Reference Systems
+                </span>
+            }
+            bordered
+            className="w-[300px]"
+            style={{
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                borderLeft: '4px solid #52c41a',
+            }}>
+            <div style={{ marginBottom: 16 }}>
+                <Text strong style={{ color: '#52c41a' }}>
+                    Select Horizontal CRS
+                </Text>
+                <Select
+                    showSearch
+                    placeholder="Select HCRS"
+                    optionFilterProp="children"
                     value={sourceEPSG}
-                    onChange={(e) => setSourceEPSG(e.target.value)}>
-                    <option value="">Select HCRS</option>
+                    onChange={(value) => setSourceEPSG(value)}
+                    filterOption={(input, option) =>
+                        option.children
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                    }
+                    style={{ width: '100%', marginTop: 4 }}>
                     {horizontal.map((crs) => (
-                        <option key={crs.code} value={crs.code}>
+                        <Option key={crs.code} value={crs.code}>
                             {crs.name} (EPSG:{crs.code})
-                        </option>
+                        </Option>
                     ))}
-                </select>
+                </Select>
             </div>
 
-            <div>
-                <label className="block font-medium mb-1">Vertical CRS</label>
-                <select
-                    className="border px-2 py-1 rounded w-60 bg-white text-black"
+            <div style={{ marginBottom: 16 }}>
+                <Text strong style={{ color: '#52c41a' }}>
+                    Select Vertical CRS
+                </Text>
+                <Select
+                    showSearch
+                    placeholder="Select VCRS"
+                    optionFilterProp="children"
                     value={targetEPSG}
-                    onChange={(e) => setTargetEPSG(e.target.value)}>
-                    <option value="">Select VCRS</option>
+                    onChange={(value) => setTargetEPSG(value)}
+                    filterOption={(input, option) =>
+                        option.children
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                    }
+                    style={{ width: '100%', marginTop: 4 }}>
                     {vertical.map((crs) => (
-                        <option key={crs.code} value={crs.code}>
+                        <Option key={crs.code} value={crs.code}>
                             {crs.name} (EPSG:{crs.code})
-                        </option>
+                        </Option>
                     ))}
-                </select>
+                </Select>
             </div>
-
-            {sourceEPSG && targetEPSG && (
-                <div className="mt-4 bg-gray-100 p-2 rounded text-sm w-fit">
-                    <strong>Selected EPSG Codes:</strong>
-                    <br />
-                    HCRS: EPSG:{sourceEPSG}
-                    <br />
-                    VCRS: EPSG:{targetEPSG}
-                </div>
-            )}
-        </div>
+        </Card>
     );
 };

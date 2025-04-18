@@ -68,10 +68,16 @@ export class PotreeView extends defaultPotree.Viewer {
                 error,
             );
 
-            if (epsgCode === 'EPSG:4326') {
-                proj4.defs(epsgCode, '+proj=longlat +datum=WGS84 +no_defs');
+            const fallbackDefs = {
+                'EPSG:4326': '+proj=longlat +datum=WGS84 +no_defs',
+                'EPSG:3857':
+                    '+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs',
+            };
+
+            if (fallbackDefs[epsgCode]) {
+                proj4.defs(epsgCode, fallbackDefs[epsgCode]);
             } else {
-                console.error('No fallback available for this EPSG code');
+                console.error(`No fallback available for ${epsgCode}`);
             }
         }
     }
