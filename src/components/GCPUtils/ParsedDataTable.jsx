@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Table } from 'antd';
 
-const ParsedDataTable = ({ data, setSelectedData, potreeViewRef }) => {
+const ParsedDataTable = ({
+    data,
+    setSelectedData,
+    potreeViewRef,
+    gcpMarkerMappings,
+    setGcpMarkerMappings,
+}) => {
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-    const [gcpMarkerMappings, setGcpMarkerMappings] = useState({});
     const [mappedGCPIds, setMappedGCPIds] = useState([]);
 
     useEffect(() => {
-        // console.log('Current GCP to Marker Mappings:', gcpMarkerMappings);
+        console.log('Current GCP to Marker Mappings:', gcpMarkerMappings);
     }, [gcpMarkerMappings]);
 
     const onGCPMarkerMapped = (gcpId, markerId, position) => {
-        // console.log(
-        //     `Mapped GCP ID ${gcpId} -> Marker ID ${markerId}`,
-        //     position,
-        // );
+        console.log(
+            `Mapped GCP ID ${gcpId} -> Marker ID ${markerId}`,
+            position,
+        );
     };
 
     const handleGCPSelection = async (gcp) => {
@@ -58,10 +63,10 @@ const ParsedDataTable = ({ data, setSelectedData, potreeViewRef }) => {
         }
     };
 
-    const handleSelectionChange = (selectedRowKeys) => {
-        setSelectedRowKeys(selectedRowKeys);
+    const handleSelectionChange = (selectedKeys) => {
+        setSelectedRowKeys(selectedKeys);
 
-        selectedRowKeys.forEach((rowId) => {
+        selectedKeys.forEach((rowId) => {
             const selectedGCP = data.find((point) => point.id === rowId);
             if (selectedGCP && !mappedGCPIds.includes(selectedGCP.id)) {
                 handleGCPSelection(selectedGCP);
@@ -77,22 +82,20 @@ const ParsedDataTable = ({ data, setSelectedData, potreeViewRef }) => {
     ];
 
     return (
-        <div>
-            <Table
-                rowKey="id"
-                columns={columns}
-                dataSource={data}
-                rowSelection={{
-                    type: 'checkbox',
-                    selectedRowKeys,
-                    onChange: handleSelectionChange,
-                    getCheckboxProps: (record) => ({
-                        disabled: mappedGCPIds.includes(record.id),
-                    }),
-                }}
-                pagination={false}
-            />
-        </div>
+        <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={data}
+            rowSelection={{
+                type: 'checkbox',
+                selectedRowKeys,
+                onChange: handleSelectionChange,
+                getCheckboxProps: (record) => ({
+                    disabled: mappedGCPIds.includes(record.id),
+                }),
+            }}
+            pagination={false}
+        />
     );
 };
 

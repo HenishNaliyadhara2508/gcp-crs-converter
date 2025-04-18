@@ -24,6 +24,7 @@
         "antd": "^5.24.7",
         "epsg-index": "^2.0.0",
         "loglevel": "^1.9.1",
+        "mathjs": "^14.4.0",
         "mobx": "^6.13.7",
         "mobx-react": "^9.2.0",
         "node-fetch": "^3.3.2",

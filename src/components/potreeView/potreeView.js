@@ -234,22 +234,6 @@ export class PotreeView extends defaultPotree.Viewer {
         }
     }
 
-    async loadGCPData(file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const gcpData = this.parseGCPData(event.target.result);
-            this.gcpData = gcpData; // Store GCP data
-        };
-        reader.readAsText(file);
-    }
-
-    parseGCPData(fileContent) {
-        const lines = fileContent.split('\n');
-        return lines.map((line) => {
-            const [x, y, z] = line.split(',').map(Number);
-            return { x, y, z };
-        });
-    }
     placeMarkerForGCP(gcp) {
         return new Promise((resolve, reject) => {
             const handleClick = async (event) => {
@@ -267,6 +251,7 @@ export class PotreeView extends defaultPotree.Viewer {
             window.addEventListener('click', handleClick, { once: true });
         });
     }
+
     calculateHelmertTransformation(localPoints, globalPoints) {
         const transformMatrix = new THREE.Matrix4();
         return transformMatrix;
