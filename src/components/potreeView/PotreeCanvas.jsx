@@ -10,24 +10,12 @@ export default function PotreeCanvas() {
     const potreeRenderRef = useRef(null);
     const potreeViewRef = useRef(null);
 
-    const [clickedCoordinates, setClickedCoordinates] = useState(null);
-    const [targetEPSG, setTargetEPSG] = useState('4326');
-    const [fileData, setFileData] = useState([]);
-
     useEffect(() => {
         const createPotree = async () => {
             potreeViewRef.current = new PotreeView({
                 ele: potreeRenderRef.current,
             });
             await potreeViewRef.current.init();
-            potreeRenderRef.current.addEventListener('click', async (e) => {
-                const coords =
-                    await potreeViewRef.current.handlePointClickWithCRS(
-                        e,
-                        targetEPSG,
-                    );
-                if (coords) setClickedCoordinates(coords);
-            });
         };
         createPotree();
     }, []);
@@ -71,11 +59,7 @@ export default function PotreeCanvas() {
                     zIndex: 10,
                 }}>
                 <div className="space-y-4">
-                    <EPSGSelector
-                        onCRSChange={(crs) => {
-                            setTargetEPSG(crs.horizontal);
-                        }}
-                    />
+                    <EPSGSelector />
 
                     <Card
                         size="small"
@@ -89,54 +73,11 @@ export default function PotreeCanvas() {
                             borderLeft: '4px solid #52c41a',
                             backgroundColor: '#f6ffed',
                         }}>
-                        <FileUploadComponent potreeViewRef={potreeViewRef} />
+                        <FileUploadComponent
+                            potreeViewRef={potreeViewRef}
+                            potreeRenderRef={potreeRenderRef}
+                        />
                     </Card>
-
-                    {clickedCoordinates && (
-                        <Card
-                            size="small"
-                            title={
-                                <span style={{ color: '#1890ff' }}>
-                                    Clicked Coordinates
-                                </span>
-                            }
-                            bordered
-                            style={{
-                                borderLeft: '4px solid #1890ff',
-                                backgroundColor: '#e6f7ff',
-                            }}>
-                            <p>
-                                XYZ:{' '}
-                                <Text
-                                    code
-                                    style={{ backgroundColor: '#f0f5ff' }}>
-                                    ({clickedCoordinates.x.toFixed(2)},
-                                    {clickedCoordinates.y.toFixed(2)},
-                                    {clickedCoordinates.z.toFixed(2)})
-                                </Text>
-                            </p>
-                            <p>
-                                Lat (DMS):{' '}
-                                <Text code>{clickedCoordinates.latDMS}</Text>
-                            </p>
-                            <p>
-                                Lon (DMS):{' '}
-                                <Text code>{clickedCoordinates.lonDMS}</Text>
-                            </p>
-                            <p>
-                                Lat (DD):{' '}
-                                <Text style={{ color: '#52c41a' }}>
-                                    {clickedCoordinates.lat}
-                                </Text>
-                            </p>
-                            <p>
-                                Lon (DD):{' '}
-                                <Text style={{ color: '#52c41a' }}>
-                                    {clickedCoordinates.lon}
-                                </Text>
-                            </p>
-                        </Card>
-                    )}
                 </div>
             </div>
         </div>

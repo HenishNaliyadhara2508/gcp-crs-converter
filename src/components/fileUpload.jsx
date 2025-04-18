@@ -3,7 +3,7 @@ import { Button, message } from 'antd';
 import ParsedDataTable from './GCPUtils/ParsedDataTable.jsx';
 import TransformCoordinates from './GCPUtils/transformCoordinates.jsx';
 
-const FileUploadComponent = () => {
+const FileUploadComponent = ({ potreeViewRef, potreeRenderRef }) => {
     const [error, setError] = useState('');
     const [isFileLoaded, setIsFileLoaded] = useState(false);
     const [parsedData, setParsedData] = useState([]);
@@ -92,6 +92,8 @@ const FileUploadComponent = () => {
                     <ParsedDataTable
                         data={parsedData}
                         setSelectedData={setSelectedData}
+                        potreeViewRef={potreeViewRef}
+                        potreeRenderRef={potreeRenderRef}
                     />
                 </div>
             )}

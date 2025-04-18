@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { loadPotree } from './potreeUtils';
 import proj4 from 'proj4'; // Import proj4 for CRS transformation
 
 let defaultPotree = window.Potree;
@@ -12,6 +11,7 @@ export class PotreeView extends defaultPotree.Viewer {
         this.isPlacingButton = false;
         this.clickedPoints = [];
         this.gcpData = [];
+        this.markers = new Map();
     }
 
     async init() {
@@ -100,11 +100,9 @@ export class PotreeView extends defaultPotree.Viewer {
 
                     this.potreeScene.addPointCloud(pointcloud);
 
-                    // Position and rotation
                     pointcloud.position.set(569277.402752, 5400050.599046, 0);
                     pointcloud.rotation.set(0, 0, -0.035);
 
-                    // Material settings
                     const material = pointcloud.material;
                     material.pointSizeType =
                         this.defaultPotree.PointSizeType.ADAPTIVE;
@@ -113,7 +111,6 @@ export class PotreeView extends defaultPotree.Viewer {
                     material.weightRGB = 1.0;
                     material.weightElevation = 1.0;
 
-                    // Camera view
                     this.potreeScene.view.position.set(
                         570975.577,
                         5398630.521,
@@ -125,7 +122,6 @@ export class PotreeView extends defaultPotree.Viewer {
                         30.009,
                     );
 
-                    // Save reference
                     this.retzPointCloud = pointcloud;
 
                     const pointcloudProjection =
@@ -183,7 +179,6 @@ export class PotreeView extends defaultPotree.Viewer {
         if (intersects.length > 0) {
             const { x, y, z } = intersects[0].point;
 
-            // Perform the CRS transformation
             const [lon, lat] = proj4(sourceCRS, targetCRS, [x, y]);
 
             return {
@@ -198,6 +193,45 @@ export class PotreeView extends defaultPotree.Viewer {
         }
 
         return null;
+    }
+    async addMarkerOnClick(event) {
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const rect = this.ele.getBoundingClientRect();
+
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const camera = this.potreeScene.getActiveCamera();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(
+            this.scene.pointclouds,
+            true,
+        );
+
+        if (intersects.length > 0) {
+            const { x, y, z } = intersects[0].point;
+
+            const geometry = new THREE.SphereGeometry(10, 16, 16);
+            const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const sphere = new THREE.Mesh(geometry, material);
+
+            sphere.position.set(x, y, z);
+
+            this.potreeScene.scene.add(sphere);
+
+            const markerId = Date.now();
+
+            this.markers.set(markerId, {
+                mesh: sphere,
+                data: { x, y, z },
+            });
+
+            return { markerId, position: { x, y, z } };
+        } else {
+            return null;
+        }
     }
 
     async loadGCPData(file) {
@@ -216,8 +250,23 @@ export class PotreeView extends defaultPotree.Viewer {
             return { x, y, z };
         });
     }
+    placeMarkerForGCP(gcp) {
+        return new Promise((resolve, reject) => {
+            const handleClick = async (event) => {
+                try {
+                    const { markerId, position } =
+                        await this.addMarkerOnClick(event);
+                    window.removeEventListener('click', handleClick);
+                    resolve({ markerId, position });
+                } catch (err) {
+                    window.removeEventListener('click', handleClick);
+                    reject(err);
+                }
+            };
 
-    // Perform the Helmert Transformation calculation
+            window.addEventListener('click', handleClick, { once: true });
+        });
+    }
     calculateHelmertTransformation(localPoints, globalPoints) {
         const transformMatrix = new THREE.Matrix4();
         return transformMatrix;
@@ -274,90 +323,3 @@ export class PotreeView extends defaultPotree.Viewer {
         });
     }
 }
-
-// addPointCloudClickListener(onClickCallback) {
-//     const raycaster = new THREE.Raycaster();
-//     const mouse = new THREE.Vector2();
-
-//     window.addEventListener('click', (event) => {
-//         const rect = this.ele.getBoundingClientRect();
-//         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-//         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-//         const camera = this.potreeScene.getActiveCamera();
-//         raycaster.setFromCamera(mouse, camera);
-
-//         const intersects = raycaster.intersectObjects(
-//             this.scene.pointclouds,
-//             true,
-//         );
-
-//         if (intersects.length > 0) {
-//             const intersectedPoint = intersects[0].point;
-//             const { x, y, z } = intersectedPoint;
-
-//             const { lat, lon } = this.convertXYToLatLon(
-//                 x,
-//                 y,
-//                 this.retzPointCloud.epsgCode,
-//             );
-
-//             const latDMS = this.toDM(lat);
-//             const lonDMS = this.toDM(lon);
-
-//             onClickCallback({ x, y, z, lat, lon, latDMS, lonDMS });
-//         } else {
-//             // 🟡 No intersection: return zeros
-//             onClickCallback({
-//                 x: 0,
-//                 y: 0,
-//                 z: 0,
-//                 lat: 0,
-//                 lon: 0,
-//                 latDMS: this.toDM(0),
-//                 lonDMS: this.toDM(0),
-//             });
-//         }
-//     });
-// }
-// async handlePointClickWithCRS(clickEvent, sourceCRS, targetCRS) {
-//     await this.loadEPSGDefinition(sourceCRS);
-//     await this.loadEPSGDefinition(targetCRS);
-
-//     const raycaster = new THREE.Raycaster();
-//     const mouse = new THREE.Vector2();
-//     const rect = this.ele.getBoundingClientRect();
-
-//     mouse.x = ((clickEvent.clientX - rect.left) / rect.width) * 2 - 1;
-//     mouse.y = -((clickEvent.clientY - rect.top) / rect.height) * 2 + 1;
-
-//     const camera = this.potreeScene.getActiveCamera();
-//     raycaster.setFromCamera(mouse, camera);
-
-//     const intersects = raycaster.intersectObjects(
-//         this.scene.pointclouds,
-//         true,
-//     );
-
-//     if (intersects.length > 0) {
-//         const { x, y, z } = intersects[0].point;
-
-//         // Perform CRS transformation
-//         const [lon, lat] = proj4(sourceCRS, targetCRS, [x, y]);
-
-//         // Store clicked point for later use in Helmert transformation
-//         this.clickedPoints.push(new THREE.Vector3(x, y, z));
-
-//         return {
-//             x,
-//             y,
-//             z,
-//             lat,
-//             lon,
-//             latDMS: this.toDM(lat),
-//             lonDMS: this.toDM(lon),
-//         };
-//     }
-
-//     return null;
-// }
