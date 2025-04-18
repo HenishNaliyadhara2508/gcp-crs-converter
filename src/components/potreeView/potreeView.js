@@ -10,6 +10,8 @@ export class PotreeView extends defaultPotree.Viewer {
         this.ele = params.ele;
         this.annotations = [];
         this.isPlacingButton = false;
+        this.clickedPoints = [];
+        this.gcpData = [];
     }
 
     async init() {
@@ -82,19 +84,6 @@ export class PotreeView extends defaultPotree.Viewer {
         }
     }
 
-    async addPotree(url) {
-        let p = await loadPotree(window.Potree, url);
-        let material = p.pointCloud.material;
-        material.size = 1;
-        material.pointSizeType = window.Potree.PointSizeType.ADAPTIVE;
-        material.shape = window.Potree.PointShape.SQUARE;
-        return p;
-    }
-
-    addPoint(point) {
-        this.sceneManager.measure.addMarker(point);
-    }
-
     async loadRetzPointCloud() {
         return new Promise((resolve, reject) => {
             this.defaultPotree.loadPointCloud(
@@ -139,11 +128,10 @@ export class PotreeView extends defaultPotree.Viewer {
                     // Save reference
                     this.retzPointCloud = pointcloud;
 
-                    // Coordinate conversion setup
                     const pointcloudProjection =
                         '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs';
                     const mapProjection = proj4.defs('WGS84');
-                    this.retzPointCloud.epsgCode = 'EPSG:32633';
+                    this.retzPointCloud.epsgCode = '32633';
 
                     window.toMap = proj4(pointcloudProjection, mapProjection);
                     window.toScene = proj4(mapProjection, pointcloudProjection);
@@ -168,7 +156,12 @@ export class PotreeView extends defaultPotree.Viewer {
         return { lat, lon };
     }
 
-    async handlePointClickWithCRS(clickEvent, sourceCRS, targetCRS) {
+    async handlePointClickWithCRS(clickEvent, targetCRS) {
+        const sourceCRS = this.retzPointCloud.epsgCode;
+        if (!sourceCRS) {
+            console.error('Retz point cloud not loaded.');
+            return null;
+        }
         await this.loadEPSGDefinition(sourceCRS);
         await this.loadEPSGDefinition(targetCRS);
 
@@ -207,6 +200,54 @@ export class PotreeView extends defaultPotree.Viewer {
         return null;
     }
 
+    async loadGCPData(file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const gcpData = this.parseGCPData(event.target.result);
+            this.gcpData = gcpData; // Store GCP data
+        };
+        reader.readAsText(file);
+    }
+
+    parseGCPData(fileContent) {
+        const lines = fileContent.split('\n');
+        return lines.map((line) => {
+            const [x, y, z] = line.split(',').map(Number);
+            return { x, y, z };
+        });
+    }
+
+    // Perform the Helmert Transformation calculation
+    calculateHelmertTransformation(localPoints, globalPoints) {
+        const transformMatrix = new THREE.Matrix4();
+        return transformMatrix;
+    }
+
+    applyHelmertTransformation() {
+        if (this.clickedPoints.length !== this.gcpData.length) {
+            alert('Number of clicked points does not match GCPs.');
+            return;
+        }
+
+        const transformMatrix = this.calculateHelmertTransformation(
+            this.clickedPoints,
+            this.gcpData,
+        );
+
+        // Apply transformation to each clicked point
+        this.clickedPoints.forEach((point, index) => {
+            const gcp = this.gcpData[index];
+            const transformedPoint = transformMatrix.multiplyVector3(
+                new THREE.Vector3(gcp.x, gcp.y, gcp.z),
+            );
+            point.setPosition(
+                transformedPoint.x,
+                transformedPoint.y,
+                transformedPoint.z,
+            );
+        });
+    }
+
     addPointCloudClickListener(onClickCallback) {
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -228,28 +269,95 @@ export class PotreeView extends defaultPotree.Viewer {
                 const intersectedPoint = intersects[0].point;
                 const { x, y, z } = intersectedPoint;
 
-                const { lat, lon } = this.convertXYToLatLon(
-                    x,
-                    y,
-                    this.retzPointCloud.epsgCode,
-                );
-
-                const latDMS = this.toDM(lat);
-                const lonDMS = this.toDM(lon);
-
-                onClickCallback({ x, y, z, lat, lon, latDMS, lonDMS });
-            } else {
-                // 🟡 No intersection: return zeros
-                onClickCallback({
-                    x: 0,
-                    y: 0,
-                    z: 0,
-                    lat: 0,
-                    lon: 0,
-                    latDMS: this.toDM(0),
-                    lonDMS: this.toDM(0),
-                });
+                onClickCallback(x, y, z);
             }
         });
     }
 }
+
+// addPointCloudClickListener(onClickCallback) {
+//     const raycaster = new THREE.Raycaster();
+//     const mouse = new THREE.Vector2();
+
+//     window.addEventListener('click', (event) => {
+//         const rect = this.ele.getBoundingClientRect();
+//         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+//         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+//         const camera = this.potreeScene.getActiveCamera();
+//         raycaster.setFromCamera(mouse, camera);
+
+//         const intersects = raycaster.intersectObjects(
+//             this.scene.pointclouds,
+//             true,
+//         );
+
+//         if (intersects.length > 0) {
+//             const intersectedPoint = intersects[0].point;
+//             const { x, y, z } = intersectedPoint;
+
+//             const { lat, lon } = this.convertXYToLatLon(
+//                 x,
+//                 y,
+//                 this.retzPointCloud.epsgCode,
+//             );
+
+//             const latDMS = this.toDM(lat);
+//             const lonDMS = this.toDM(lon);
+
+//             onClickCallback({ x, y, z, lat, lon, latDMS, lonDMS });
+//         } else {
+//             // 🟡 No intersection: return zeros
+//             onClickCallback({
+//                 x: 0,
+//                 y: 0,
+//                 z: 0,
+//                 lat: 0,
+//                 lon: 0,
+//                 latDMS: this.toDM(0),
+//                 lonDMS: this.toDM(0),
+//             });
+//         }
+//     });
+// }
+// async handlePointClickWithCRS(clickEvent, sourceCRS, targetCRS) {
+//     await this.loadEPSGDefinition(sourceCRS);
+//     await this.loadEPSGDefinition(targetCRS);
+
+//     const raycaster = new THREE.Raycaster();
+//     const mouse = new THREE.Vector2();
+//     const rect = this.ele.getBoundingClientRect();
+
+//     mouse.x = ((clickEvent.clientX - rect.left) / rect.width) * 2 - 1;
+//     mouse.y = -((clickEvent.clientY - rect.top) / rect.height) * 2 + 1;
+
+//     const camera = this.potreeScene.getActiveCamera();
+//     raycaster.setFromCamera(mouse, camera);
+
+//     const intersects = raycaster.intersectObjects(
+//         this.scene.pointclouds,
+//         true,
+//     );
+
+//     if (intersects.length > 0) {
+//         const { x, y, z } = intersects[0].point;
+
+//         // Perform CRS transformation
+//         const [lon, lat] = proj4(sourceCRS, targetCRS, [x, y]);
+
+//         // Store clicked point for later use in Helmert transformation
+//         this.clickedPoints.push(new THREE.Vector3(x, y, z));
+
+//         return {
+//             x,
+//             y,
+//             z,
+//             lat,
+//             lon,
+//             latDMS: this.toDM(lat),
+//             lonDMS: this.toDM(lon),
+//         };
+//     }
+
+//     return null;
+// }

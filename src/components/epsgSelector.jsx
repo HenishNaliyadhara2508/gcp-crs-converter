@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Select, Card, Typography, Divider } from 'antd';
+import { Select, Card, Typography } from 'antd';
 import { getAllCRSByType } from '../helpers/epsgHelper';
 
 const { Option } = Select;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
-export const EPSGSelector = ({
-    sourceEPSG,
-    setSourceEPSG,
-    targetEPSG,
-    setTargetEPSG,
-}) => {
+export const EPSGSelector = ({ onCRSChange }) => {
+    const [selectedHorizontalCRS, setSelectedHorizontalCRS] = useState('4326');
+    const [selectedVerticalCRS, setSelectedVerticalCRS] = useState(null);
     const [horizontal, setHorizontal] = useState([]);
     const [vertical, setVertical] = useState([]);
 
@@ -18,7 +15,33 @@ export const EPSGSelector = ({
         const { horizontalList, verticalList } = getAllCRSByType();
         setHorizontal(horizontalList);
         setVertical(verticalList);
+
+        // Set first values as selected
+        if (horizontalList.length > 0) {
+            setSelectedHorizontalCRS(horizontalList[0].code);
+            if (onCRSChange)
+                onCRSChange({
+                    horizontal: selectedHorizontalCRS,
+                    vertical: verticalList[0]?.code,
+                });
+        }
+
+        if (verticalList.length > 0) {
+            setSelectedVerticalCRS(verticalList[0].code);
+        }
     }, []);
+
+    const handleHorizontalCRSChange = (value) => {
+        setSelectedHorizontalCRS(value);
+        if (onCRSChange)
+            onCRSChange({ horizontal: value, vertical: selectedVerticalCRS });
+    };
+
+    const handleVerticalCRSChange = (value) => {
+        setSelectedVerticalCRS(value);
+        if (onCRSChange)
+            onCRSChange({ horizontal: selectedHorizontalCRS, vertical: value });
+    };
 
     return (
         <Card
@@ -39,16 +62,16 @@ export const EPSGSelector = ({
                 </Text>
                 <Select
                     showSearch
-                    placeholder="Select HCRS"
+                    placeholder="Select Horizontal CRS"
+                    value={selectedHorizontalCRS}
+                    onChange={handleHorizontalCRSChange}
                     optionFilterProp="children"
-                    value={sourceEPSG}
-                    onChange={(value) => setSourceEPSG(value)}
+                    style={{ width: '100%', marginTop: 4 }}
                     filterOption={(input, option) =>
-                        option.children
+                        String(option.children)
                             .toLowerCase()
                             .includes(input.toLowerCase())
-                    }
-                    style={{ width: '100%', marginTop: 4 }}>
+                    }>
                     {horizontal.map((crs) => (
                         <Option key={crs.code} value={crs.code}>
                             {crs.name} (EPSG:{crs.code})
@@ -57,22 +80,22 @@ export const EPSGSelector = ({
                 </Select>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
+            <div>
                 <Text strong style={{ color: '#52c41a' }}>
                     Select Vertical CRS
                 </Text>
                 <Select
                     showSearch
-                    placeholder="Select VCRS"
+                    placeholder="Select Vertical CRS"
+                    value={selectedVerticalCRS}
+                    onChange={handleVerticalCRSChange}
                     optionFilterProp="children"
-                    value={targetEPSG}
-                    onChange={(value) => setTargetEPSG(value)}
+                    style={{ width: '100%', marginTop: 4 }}
                     filterOption={(input, option) =>
-                        option.children
+                        String(option.children)
                             .toLowerCase()
                             .includes(input.toLowerCase())
-                    }
-                    style={{ width: '100%', marginTop: 4 }}>
+                    }>
                     {vertical.map((crs) => (
                         <Option key={crs.code} value={crs.code}>
                             {crs.name} (EPSG:{crs.code})

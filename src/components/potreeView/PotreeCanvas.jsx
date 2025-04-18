@@ -11,43 +11,8 @@ export default function PotreeCanvas() {
     const potreeViewRef = useRef(null);
 
     const [clickedCoordinates, setClickedCoordinates] = useState(null);
-    const [sourceEPSG, setSourceEPSG] = useState('32633');
     const [targetEPSG, setTargetEPSG] = useState('4326');
     const [fileData, setFileData] = useState([]);
-
-    const handleFileUpload = (event) => {
-        const file = event.target.files[0];
-        if (
-            file &&
-            (file.name.endsWith('.txt') || file.name.endsWith('.csv'))
-        ) {
-            processFile(file);
-        }
-    };
-
-    const processFile = (file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const rows = e.target.result.split('\n');
-            const parsedData = rows
-                .map((line) => {
-                    const values = line.trim().split(';');
-                    if (values.length === 4) {
-                        const [id, x, y, z] = values;
-                        return {
-                            id,
-                            x: parseFloat(x),
-                            y: parseFloat(y),
-                            z: parseFloat(z),
-                        };
-                    }
-                    return null;
-                })
-                .filter(Boolean);
-            setFileData(parsedData);
-        };
-        reader.readAsText(file);
-    };
 
     useEffect(() => {
         const createPotree = async () => {
@@ -59,7 +24,6 @@ export default function PotreeCanvas() {
                 const coords =
                     await potreeViewRef.current.handlePointClickWithCRS(
                         e,
-                        sourceEPSG,
                         targetEPSG,
                     );
                 if (coords) setClickedCoordinates(coords);
@@ -74,14 +38,6 @@ export default function PotreeCanvas() {
         }
     }, []);
 
-    useEffect(() => {
-        if (fileData.length && potreeViewRef.current) {
-            fileData.forEach((coord) => {
-                // Add visual points if needed
-            });
-        }
-    }, [fileData]);
-
     return (
         <div
             className="w-full h-screen relative"
@@ -93,7 +49,7 @@ export default function PotreeCanvas() {
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    width: '75vw',
+                    width: '70vw',
                     height: '100vh',
                     zIndex: 1,
                     backgroundColor: '#f0faff',
@@ -106,7 +62,7 @@ export default function PotreeCanvas() {
                     position: 'absolute',
                     top: 0,
                     right: 0,
-                    width: '25vw',
+                    width: '30vw',
                     height: '100vh',
                     padding: '16px',
                     backgroundColor: '#ffffff',
@@ -116,10 +72,9 @@ export default function PotreeCanvas() {
                 }}>
                 <div className="space-y-4">
                     <EPSGSelector
-                        sourceEPSG={sourceEPSG}
-                        setSourceEPSG={setSourceEPSG}
-                        targetEPSG={targetEPSG}
-                        setTargetEPSG={setTargetEPSG}
+                        onCRSChange={(crs) => {
+                            setTargetEPSG(crs.horizontal);
+                        }}
                     />
 
                     <Card
@@ -134,7 +89,7 @@ export default function PotreeCanvas() {
                             borderLeft: '4px solid #52c41a',
                             backgroundColor: '#f6ffed',
                         }}>
-                        <FileUploadComponent onFileUpload={handleFileUpload} />
+                        <FileUploadComponent potreeViewRef={potreeViewRef} />
                     </Card>
 
                     {clickedCoordinates && (

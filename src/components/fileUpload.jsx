@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Button, message } from 'antd';
+import ParsedDataTable from './GCPUtils/ParsedDataTable.jsx';
+import TransformCoordinates from './GCPUtils/transformCoordinates.jsx';
 
-const FileUploadComponent = ({ onParsedData }) => {
+const FileUploadComponent = () => {
     const [error, setError] = useState('');
     const [isFileLoaded, setIsFileLoaded] = useState(false);
     const [parsedData, setParsedData] = useState([]);
+    const [selectedData, setSelectedData] = useState([]);
+    const [transformationPreview, setTransformationPreview] = useState([]);
+    const [transformationParams, setTransformationParams] = useState(null);
 
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
@@ -38,11 +44,33 @@ const FileUploadComponent = ({ onParsedData }) => {
                 .filter(Boolean);
 
             setParsedData(data);
+            setSelectedData(data);
             setIsFileLoaded(true);
             setError('');
-            if (onParsedData) onParsedData(data);
         };
         reader.readAsText(file);
+    };
+
+    const handleCalculateTransformation = () => {
+        if (selectedData.length === 0) {
+            message.warning('Please select data points first.');
+            return;
+        }
+
+        const translation = { x: 10, y: 5, z: 2 }; // Example values
+        const scale = 1.0;
+
+        const preview = selectedData.map((point) => ({
+            id: point.id,
+            x: scale * point.x + translation.x,
+            y: scale * point.y + translation.y,
+            z: scale * point.z + translation.z,
+        }));
+
+        setTransformationPreview(preview);
+        setTransformationParams({ translation, scale });
+
+        message.success('Transformation calculated.');
     };
 
     return (
@@ -55,33 +83,36 @@ const FileUploadComponent = ({ onParsedData }) => {
                 className="border p-2 rounded w-full"
             />
             {error && <div className="text-red-500">{error}</div>}
-            {isFileLoaded && (
-                <table className="table-auto w-full border-collapse mt-4">
-                    <thead>
-                        <tr>
-                            <th className="border p-2 text-left">ID</th>
-                            <th className="border p-2 text-left">X</th>
-                            <th className="border p-2 text-left">Y</th>
-                            <th className="border p-2 text-left">Z</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {parsedData.map((data, index) => (
-                            <tr key={index}>
-                                <td className="border p-2">{data.id}</td>
-                                <td className="border p-2">
-                                    {data.x.toFixed(2)}
-                                </td>
-                                <td className="border p-2">
-                                    {data.y.toFixed(2)}
-                                </td>
-                                <td className="border p-2">
-                                    {data.z.toFixed(2)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+
+            {isFileLoaded && parsedData.length > 0 && (
+                <div className="mt-4">
+                    <h4 className="font-medium text-lg">
+                        Parsed Data (Select points for transformation)
+                    </h4>
+                    <ParsedDataTable
+                        data={parsedData}
+                        setSelectedData={setSelectedData}
+                    />
+                </div>
+            )}
+
+            {isFileLoaded && selectedData.length > 0 && (
+                <div className="mx-auto flex justify-ce items-center">
+                    <Button
+                        type="primary"
+                        onClick={handleCalculateTransformation}
+                        disabled={selectedData.length === 0}>
+                        Calculate Transformation
+                    </Button>
+                </div>
+            )}
+
+            {/* Show transformed data and parameters */}
+            {transformationPreview.length > 0 && transformationParams && (
+                <TransformCoordinates
+                    transformedData={transformationPreview}
+                    transformationParams={transformationParams}
+                />
             )}
         </div>
     );
