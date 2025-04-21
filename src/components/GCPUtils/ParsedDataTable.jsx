@@ -12,28 +12,15 @@ const ParsedDataTable = ({
     const [mappedGCPIds, setMappedGCPIds] = useState([]);
 
     useEffect(() => {
-        console.log('Current GCP to Marker Mappings:', gcpMarkerMappings);
+        // console.log('Current GCP to Marker Mappings:', gcpMarkerMappings);
     }, [gcpMarkerMappings]);
 
-    const onGCPMarkerMapped = (gcpId, markerId, position) => {
-        console.log(
-            `Mapped GCP ID ${gcpId} -> Marker ID ${markerId}`,
-            position,
-        );
-    };
-
     const handleGCPSelection = async (gcp) => {
-        if (mappedGCPIds.includes(gcp.id)) {
-            console.warn(`GCP ${gcp.id} already mapped.`);
-            return;
-        }
+        if (mappedGCPIds.includes(gcp.id)) return;
 
         setSelectedData([gcp]);
 
-        if (
-            !potreeViewRef.current ||
-            !potreeViewRef.current.placeMarkerForGCP
-        ) {
+        if (!potreeViewRef.current?.placeMarkerForGCP) {
             console.error(
                 'PotreeView is not available or does not support marker placement',
             );
@@ -41,23 +28,19 @@ const ParsedDataTable = ({
         }
 
         try {
-            const { markerId, position } =
+            const { position } =
                 await potreeViewRef.current.placeMarkerForGCP(gcp);
 
-            setGcpMarkerMappings((prevMappings) => {
-                const newMappings = {
-                    ...prevMappings,
-                    [gcp.id]: {
-                        markerId,
-                        position,
-                        gcp: { x: gcp.x, y: gcp.y, z: gcp.z },
-                    },
-                };
-                setMappedGCPIds((prevIds) => [...prevIds, gcp.id]);
-                return newMappings;
-            });
+            setGcpMarkerMappings((prevMappings) => ({
+                ...prevMappings,
+                [gcp.id]: {
+                    id: gcp.id,
+                    source: { ...position },
+                    target: { x: gcp.x, y: gcp.y, z: gcp.z },
+                },
+            }));
 
-            onGCPMarkerMapped(gcp.id, markerId, position);
+            setMappedGCPIds((prev) => [...prev, gcp.id]);
         } catch (err) {
             console.error('Error placing marker:', err);
         }
@@ -68,7 +51,7 @@ const ParsedDataTable = ({
 
         selectedKeys.forEach((rowId) => {
             const selectedGCP = data.find((point) => point.id === rowId);
-            if (selectedGCP && !mappedGCPIds.includes(selectedGCP.id)) {
+            if (selectedGCP) {
                 handleGCPSelection(selectedGCP);
             }
         });

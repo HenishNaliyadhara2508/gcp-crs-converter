@@ -17,15 +17,15 @@ const TransformCoordinates = ({
                 </p>
                 <p>
                     <strong>Translation X:</strong>{' '}
-                    {transformationParams.translation.x}
+                    {transformationParams.translation[0]}
                 </p>
                 <p>
                     <strong>Translation Y:</strong>{' '}
-                    {transformationParams.translation.y}
+                    {transformationParams.translation[1]}
                 </p>
                 <p>
                     <strong>Translation Z:</strong>{' '}
-                    {transformationParams.translation.z}
+                    {transformationParams.translation[2]}
                 </p>
             </div>
 

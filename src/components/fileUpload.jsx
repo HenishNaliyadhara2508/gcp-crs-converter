@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Button, message } from 'antd';
 import ParsedDataTable from './GCPUtils/ParsedDataTable.jsx';
 import TransformCoordinates from './GCPUtils/transformCoordinates.jsx';
+import { calculateHelmert3D } from '../helpers/helmert.js';
+import * as THREE from 'three';
 
-const FileUploadComponent = ({ potreeViewRef, potreeRenderRef }) => {
+const FileUploadComponent = ({ potreeViewRef }) => {
     const [error, setError] = useState('');
     const [isFileLoaded, setIsFileLoaded] = useState(false);
     const [parsedData, setParsedData] = useState([]);
@@ -64,117 +66,78 @@ const FileUploadComponent = ({ potreeViewRef, potreeRenderRef }) => {
 
         const source = matched.map((gcp) => {
             const local = gcpMarkerMappings[gcp.id];
-            return [local.position.x, local.position.y, local.position.z]; // Local position (marker)
+            return [local.source.x, local.source.y, local.source.z];
         });
+
         const target = matched.map((gcp) => {
             const local = gcpMarkerMappings[gcp.id];
-            return [local.gcp.x, local.gcp.y, local.gcp.z]; // Local position (marker)
+            return [local.target.x, local.target.y, local.target.z];
         });
 
-        const { scale, rotation, translation } = calculateHelmertTransformation(
-            source,
-            target,
-        );
-        const preview = source.map(([x, y, z]) => {
-            const rotated = rotatePoint([x, y, z], rotation);
-            return {
-                x: rotated[0] * scale + translation.x,
-                y: rotated[1] * scale + translation.y,
-                z: rotated[2] * scale + translation.z,
-            };
-        });
+        const ids = matched.map((gcp) => gcp.id);
 
-        const transformedData = matched.map((gcp, i) => ({
-            id: gcp.id,
-            x: preview[i].x,
-            y: preview[i].y,
-            z: preview[i].z,
+        const {
+            scale: rawScale,
+            rotation,
+            translation,
+            transformed,
+        } = calculateHelmert3D(source, target, ids);
+        const scale = Math.abs(rawScale);
+
+        const transformedData = transformed.map((point) => ({
+            id: point.id,
+            dx: point.dx,
+            dy: point.dy,
+            dz: point.dz,
         }));
 
         setTransformationPreview(transformedData);
-        setTransformationParams({ scale, translation });
-        message.success('Transformation calculated.');
+        setTransformationParams({ scale, rotation, translation });
+
+        message.success('Transformation calculated successfully.');
     };
 
-    const calculateHelmertTransformation = (source, target) => {
-        const sourceCentroid = computeCentroid(source);
-        const targetCentroid = computeCentroid(target);
+    const onApplyTransformation = () => {
+        const { scale, translation } = transformationParams;
 
-        const sourceCentered = source.map((point) =>
-            subtractPoints(point, sourceCentroid),
-        );
-        const targetCentered = target.map((point) =>
-            subtractPoints(point, targetCentroid),
-        );
-
-        const scale = computeScale(sourceCentered, targetCentered);
-        const rotation = computeRotation(sourceCentered, targetCentered);
-        const translation = computeTranslation(
-            scale,
-            rotation,
-            sourceCentroid,
-            targetCentroid,
+        const scaleMatrix = new THREE.Matrix4().makeScale(scale, scale, scale);
+        const translationMatrix = new THREE.Matrix4().makeTranslation(
+            translation[0],
+            translation[1],
+            translation[2],
         );
 
-        return { scale, rotation, translation };
-    };
+        const transformationMatrix = new THREE.Matrix4();
+        transformationMatrix.multiply(translationMatrix);
+        transformationMatrix.multiply(scaleMatrix);
 
-    const computeCentroid = (points) => {
-        const sum = points.reduce(
-            (acc, point) => {
-                acc[0] += point[0];
-                acc[1] += point[1];
-                acc[2] += point[2];
-                return acc;
-            },
-            [0, 0, 0],
-        );
-        return sum.map((coord) => coord / points.length);
-    };
+        if (potreeViewRef.current && potreeViewRef.current.scene) {
+            const pointCloud = potreeViewRef.current.scene.pointclouds[0];
 
-    const subtractPoints = (point, centroid) => {
-        return point.map((coord, i) => coord - centroid[i]);
-    };
+            if (pointCloud) {
+                pointCloud.matrixAutoUpdate = false;
+                pointCloud.matrix.identity().multiply(transformationMatrix);
+                pointCloud.updateMatrixWorld(true);
+                pointCloud.matrixWorldNeedsUpdate = true;
 
-    const computeScale = (sourceCentered, targetCentered) => {
-        const dotProduct = sourceCentered.reduce(
-            (acc, point, i) =>
-                acc +
-                point.reduce(
-                    (dp, val, j) => dp + val * targetCentered[i][j],
-                    0,
-                ),
-            0,
-        );
-        const normSource = sourceCentered.reduce(
-            (acc, point) =>
-                acc + point.reduce((sum, val) => sum + val * val, 0),
-            0,
-        );
-        return dotProduct / normSource;
-    };
+                const box = new THREE.Box3().setFromObject(pointCloud);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
 
-    const computeRotation = (sourceCentered, targetCentered) => {
-        // Placeholder for rotation matrix computation
-        // In a real case, this would involve using singular value decomposition or another method
-        return sourceCentered; // This is a dummy placeholder, replace with actual rotation logic
-    };
+                const camera = potreeViewRef.current.scene.getActiveCamera();
+                camera.position.set(center.x, center.y, center.z + 50);
+                // console.log(camera.position, 'camera position');
+                // console.log(center, 'center');
+                camera.lookAt(center);
+                camera.updateProjectionMatrix();
 
-    const computeTranslation = (
-        scale,
-        rotation,
-        sourceCentroid,
-        targetCentroid,
-    ) => {
-        const translation = targetCentroid.map(
-            (coord, i) => coord - scale * rotation[i] * sourceCentroid[i],
-        );
-        return { x: translation[0], y: translation[1], z: translation[2] };
-    };
+                if (potreeViewRef.current) {
+                    potreeViewRef.current.render();
+                }
+            }
+        }
 
-    const rotatePoint = (point, rotation) => {
-        // Dummy placeholder for actual rotation logic, apply the rotation matrix to the point
-        return point; // Replace with actual rotated point
+        message.success('Transformation applied successfully!');
     };
 
     return (
@@ -195,7 +158,6 @@ const FileUploadComponent = ({ potreeViewRef, potreeRenderRef }) => {
                         data={parsedData}
                         setSelectedData={setSelectedData}
                         potreeViewRef={potreeViewRef}
-                        potreeRenderRef={potreeRenderRef}
                         gcpMarkerMappings={gcpMarkerMappings}
                         setGcpMarkerMappings={setGcpMarkerMappings}
                     />
@@ -213,10 +175,7 @@ const FileUploadComponent = ({ potreeViewRef, potreeRenderRef }) => {
                 <TransformCoordinates
                     transformedData={transformationPreview}
                     transformationParams={transformationParams}
-                    onApply={() => {
-                        message.success('Transformation applied!');
-                        // You can apply it to your point cloud here if needed
-                    }}
+                    onApply={onApplyTransformation}
                 />
             )}
         </div>
