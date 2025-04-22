@@ -112,24 +112,59 @@ const FileUploadComponent = ({ potreeViewRef }) => {
         transformationMatrix.multiply(scaleMatrix);
 
         if (potreeViewRef.current && potreeViewRef.current.scene) {
-            const pointCloud = potreeViewRef.current.scene.pointclouds[0];
+            const scene = potreeViewRef.current.scene;
+            const pointCloud = scene.pointclouds[0];
 
             if (pointCloud) {
                 pointCloud.matrixAutoUpdate = false;
                 pointCloud.matrix.identity().multiply(transformationMatrix);
                 pointCloud.updateMatrixWorld(true);
                 pointCloud.matrixWorldNeedsUpdate = true;
+                pointCloud.matrix = pointCloud.matrixWorld;
+                // pointCloud.updateMatrix();
+                // pointCloud.updateMatrixWorld(true);
 
-                const box = new THREE.Box3().setFromObject(pointCloud);
-                const center = new THREE.Vector3();
-                box.getCenter(center);
+                scene.scene.children.forEach((object) => {
+                    if (object.isMesh) {
+                        if (object.material && object.material.color) {
+                            const color = object.material.color;
+                            if (color.equals(new THREE.Color(1, 0, 0))) {
+                                object.matrixAutoUpdate = false;
+                                object.matrix
+                                    .identity()
+                                    .multiply(transformationMatrix);
+                                // object.updateMatrixWorld(true);
+                                object.matrixWorldNeedsUpdate = true;
+                                object.matrix = object.matrixWorld;
+                                // object.updateMatrix();
+                                // object.updateMatrixWorld(true);
+                            }
+                        }
+                    }
+                });
 
-                const camera = potreeViewRef.current.scene.getActiveCamera();
-                camera.position.set(center.x, center.y, center.z + 50);
-                // console.log(camera.position, 'camera position');
-                // console.log(center, 'center');
-                camera.lookAt(center);
-                camera.updateProjectionMatrix();
+                // const box = new THREE.Box3().setFromObject(pointCloud);
+                // const center = new THREE.Vector3();
+                // box.getCenter(center);
+
+                // const camera = scene.getActiveCamera();
+
+                // const margin = 50;
+                // const nearPlane = Math.max(0.1, box.min.z - margin);
+                // const farPlane = box.max.z + margin;
+
+                // camera.near = nearPlane;
+                // camera.far = farPlane;
+
+                // camera.position.set(center.x, center.y, center.z + 50);
+                // camera.lookAt(center);
+                // camera.updateProjectionMatrix();
+                if (
+                    potreeViewRef.current &&
+                    potreeViewRef.current.fitToScreen
+                ) {
+                    potreeViewRef.current.fitToScreen(1);
+                }
 
                 if (potreeViewRef.current) {
                     potreeViewRef.current.render();
@@ -137,7 +172,7 @@ const FileUploadComponent = ({ potreeViewRef }) => {
             }
         }
 
-        message.success('Transformation applied successfully!');
+        message.success('Transformation applied to point cloud and markers!');
     };
 
     return (

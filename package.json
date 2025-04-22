@@ -23,6 +23,8 @@
         "@turf/boolean-intersects": "^7.2.0",
         "antd": "^5.24.7",
         "epsg-index": "^2.0.0",
+        "file-saver": "^2.0.5",
+        "gl-matrix": "^3.4.3",
         "loglevel": "^1.9.1",
         "mathjs": "^9.5.2",
         "ml-matrix": "^6.12.1",
